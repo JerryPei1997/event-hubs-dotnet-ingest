@@ -60,11 +60,7 @@ namespace SendSampleData
 
                     Thread.Sleep(10000);
                 }
-            }
-                
-            
-                
-            
+            } 
         }
     }
 }
