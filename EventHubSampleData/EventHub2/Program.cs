@@ -1,9 +1,11 @@
-﻿using Microsoft.ServiceBus.Messaging;
+﻿using Azure.Messaging.EventHubs;
+using Azure.Messaging.EventHubs.Producer;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using System.Threading;
-using System.Linq;
+using System.Threading.Tasks;
 
 namespace SendSampleData
 {
@@ -13,45 +15,56 @@ namespace SendSampleData
         // Copy the connection string ("Connection string-primary key") from your Event Hub namespace.
         const string connectionString = @"<YourConnectionString>";
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
-            EventHubIngestion();
+            await EventHubIngestion();
         }
 
-        static void EventHubIngestion()
+        static async Task EventHubIngestion()
         {
-            var eventHubClient = EventHubClient.CreateFromConnectionString(connectionString, eventHubName);
-            int counter = 0;
-            for (int i = 0; i < 100; i++)
+            await using (var producer = new EventHubProducerClient(connectionString, eventHubName))
             {
-                int recordsPerMessage = 3;
-                try
+                string[] partitionIds = await producer.GetPartitionIdsAsync();
+
+                EventDataBatch eventBatch = await producer.CreateBatchAsync();
+
+                int counter = 0;
+                for (int i = 0; i < 100; i++)
                 {
-                    List<string> records = Enumerable
-                        .Range(0, recordsPerMessage)
-                        .Select(recordNumber => $"{{\"timeStamp\": \"{DateTime.UtcNow.AddSeconds(100 * counter)}\", \"name\": \"{$"name {counter}"}\", \"metric\": {counter + recordNumber}, \"source\": \"EventHubMessage\"}}")
-                        .ToList();
-                    string recordString = string.Join(Environment.NewLine, records);
+                    int recordsPerMessage = 3;
+                    try
+                    {
+                        List<string> records = Enumerable
+                            .Range(0, recordsPerMessage)
+                            .Select(recordNumber => $"{{\"timeStamp\": \"{DateTime.UtcNow.AddSeconds(100 * counter)}\", \"name\": \"{$"name {counter}"}\", \"metric\": {counter + recordNumber}, \"source\": \"EventHubMessage\"}}")
+                            .ToList();
+                        string recordString = string.Join(Environment.NewLine, records);
 
-                    EventData eventData = new EventData(Encoding.UTF8.GetBytes(recordString));
-                    Console.WriteLine($"sending message {counter}");
-                    // Optional "dynamic routing" properties for the database, table, and mapping you created. 
-                    // eventData.Properties.Add("Table", "TestTable");
-                    // eventData.Properties.Add("IngestionMappingReference", "TestMapping");
-                    // eventData.Properties.Add("Format", "json");
-                    eventHubClient.Send(eventData);
+                        EventData eventData = new EventData(Encoding.UTF8.GetBytes(recordString));
+                        eventBatch.TryAdd(eventData);
+                        Console.WriteLine($"sending message {counter}");
+                        // Optional "dynamic routing" properties for the database, table, and mapping you created. 
+                        // eventData.Properties.Add("Table", "TestTable");
+                        // eventData.Properties.Add("IngestionMappingReference", "TestMapping");
+                        // eventData.Properties.Add("Format", "json");
+                        await producer.SendAsync(eventBatch);
+                    }
+                    catch (Exception exception)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("{0} > Exception: {1}", DateTime.Now, exception.Message);
+                        Console.ResetColor();
+                    }
+
+                    counter += recordsPerMessage;
+
+                    Thread.Sleep(10000);
                 }
-                catch (Exception exception)
-                {
-                    Console.ForegroundColor = ConsoleColor.Red;
-                    Console.WriteLine("{0} > Exception: {1}", DateTime.Now, exception.Message);
-                    Console.ResetColor();
-                }
-
-                counter += recordsPerMessage;
-
-                Thread.Sleep(10000);
             }
+                
+            
+                
+            
         }
     }
 }
