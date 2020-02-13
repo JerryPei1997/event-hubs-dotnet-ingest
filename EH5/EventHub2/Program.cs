@@ -11,10 +11,6 @@ namespace SendSampleData
 {
     class Program
     {
-        const string eventHubName = "test-hub";
-        // Copy the connection string ("Connection string-primary key") from your Event Hub namespace.
-        const string connectionString = @"<YourConnectionString>";
-
         static async Task Main(string[] args)
         {
             await EventHubIngestion();
@@ -22,6 +18,10 @@ namespace SendSampleData
 
         static async Task EventHubIngestion()
         {
+            string eventHubName = Environment.GetEnvironmentVariable("AZURE_EVENTHUB_NAME");
+            // Copy the connection string ("Connection string-primary key") from your Event Hub namespace.
+            string connectionString = Environment.GetEnvironmentVariable("AZURE_EVENTHUB_NAMESPACE_CONNECTIONSTRING");
+
             await using (var producer = new EventHubProducerClient(connectionString, eventHubName))
             {
                 string[] partitionIds = await producer.GetPartitionIdsAsync();
