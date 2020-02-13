@@ -72,14 +72,7 @@ First, clone the repository on your machine:
 git clone https://github.com/Azure-Samples/event-hubs-dotnet-ingest.git
 ```
 
-Then, switch to the appropriate folder:
-``` cmd
-cd SB3
-```
-or
-``` cmd
-cd EH5
-```
+Then, switch to the appropriate folder(SB3/EH5).
 
 Finally, open `EventHubSampleData.sln` with Visual Studio, and run the application.
 
